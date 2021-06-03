@@ -33,7 +33,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // simple route
 app.get("/", (req, res) => {
-  res.json({ message: "Welcome to bezkoder application." });
+  res.json({ message: "Welcome to server side application." });
 });
 
 require("./app/routes/hero.routes")(app);
