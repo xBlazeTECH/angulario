@@ -4,8 +4,47 @@ const cors = require("cors");
 
 const app = express();
 
+const http = require("http").Server(app);
+const io = require("socket.io")(http);
+
+const documents = {};
+
+// Socket IO Stuff to be Refactored.
+io.on("connection", (socket) => {
+  let previousId;
+
+  const safeJoin = (currentId) => {
+    socket.leave(previousId);
+    socket.join(currentId, () =>
+      console.log(`Socket ${socket.id} synced updates with ${currentId}`)
+    );
+    previousId = currentId;
+  };
+
+  socket.on("getDoc", (docId) => {
+    safeJoin(docId);
+    socket.emit("document", documents[docId]);
+  });
+
+  socket.on("addDoc", (doc) => {
+    documents[doc.id] = doc;
+    safeJoin(doc.id);
+    io.emit("documents", Object.keys(documents));
+    socket.emit("document", doc);
+  });
+
+  socket.on("editDoc", (doc) => {
+    documents[doc.id] = doc;
+    socket.to(doc.id).emit("document", doc);
+  });
+
+  io.emit("documents", Object.keys(documents));
+
+  console.log(`Socket ${socket.id} has connected`);
+});
+
 var corsOptions = {
-  origin: "http://localhost:4200"
+  origin: "http://localhost:4200",
 };
 
 app.use(cors(corsOptions));
@@ -13,14 +52,14 @@ app.use(cors(corsOptions));
 const db = require("./app/models");
 db.mongoose
   .connect(db.url, {
-    dbName: 'herodb',
+    dbName: "herodb",
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
   .then(() => {
     console.log("Connected to the database!");
   })
-  .catch(err => {
+  .catch((err) => {
     console.log("Cannot connect to the database!", err);
     process.exit();
   });
